@@ -1,0 +1,19 @@
+Package: ROCI
+Title: ROCI package
+Version: 0.0.0.9000
+Authors@R: 
+    person("Dominik", "Thiele", , "dthiele@tcc-clinicalsolutions.de", 
+    role = c("aut", "cre"),
+    comment = c(ORCID = "0000-0003-1073-0747"))
+Description: Provides a set of functions to calculate and visualize the Receiver 
+    Operating Characteristic (ROC) curve, the Area Under the Curve (AUC) and other 
+    statistical metrics for a binary classification model, where the two classes 
+    are defined by an interval i.e. two thresholds.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Imports: 
+    dplyr,
+    ggplot2,
+    magrittr
