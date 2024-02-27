@@ -32,7 +32,7 @@ roci <- function(data, classes) {
 
   # Initialize results
   # Number of rows sum_{i=1}^n (i)
-  n_rows <- sum(seq(1, n))
+  n_rows <- sum(seq(1, n-1))
   results <- data.frame(
     "width" = numeric(n_rows),
     "rp" = numeric(n_rows),
