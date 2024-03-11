@@ -9,6 +9,7 @@ plot_roci(
   add_width_plot = TRUE,
   add_yi_plot = TRUE,
   add_cutoff_plot = TRUE,
+  add_auc_plot = TRUE,
   ...
 )
 }
@@ -22,6 +23,8 @@ and if the corresponding interval should be highlighted}
 
 \item{add_cutoff_plot}{Logical if corresponding interval of maximal
 Youden-Index should be written to plot.}
+
+\item{add_auc_plot}{Logical if corresponding AUC should be written to plot.}
 
 \item{...}{Additional arguments passed to ggplot.}
 }

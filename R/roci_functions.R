@@ -172,6 +172,7 @@ auc_roci <- function(roci_results) {
 #' and if the corresponding interval should be highlighted
 #' @param add_cutoff_plot Logical if corresponding interval of maximal
 #' Youden-Index should be written to plot.
+#' @param add_auc_plot Logical if corresponding AUC should be written to plot.
 #' @param ... Additional arguments passed to ggplot.
 #'
 #' @return A ggplot.
@@ -191,6 +192,7 @@ plot_roci <- function(roci_results,
                       add_width_plot = TRUE,
                       add_yi_plot = TRUE,
                       add_cutoff_plot = TRUE,
+                      add_auc_plot = TRUE,
                       ...) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop(
@@ -205,6 +207,9 @@ plot_roci <- function(roci_results,
     )
   }
 
+  if(add_auc_plot) {
+    auc <- auc_roci(roci_results)
+  }
 
   if (sum(roci_results$width == 0) == 0) {
     roci_results <- roci_results %>%
@@ -262,7 +267,18 @@ plot_roci <- function(roci_results,
         vjust = -0.5, hjust = 1.5
       )
   }
-
+  if (add_auc_plot) {
+    roci_plot <- roci_plot +
+      ggplot2::annotate(
+        geom = "text",
+        x = 0.65, y = 0.3, label = paste0(
+          "AUC = ",
+          round(auc, 3),
+          "\n"
+        ),
+        hjust = 0
+      )
+  }
   if (add_yi_plot) {
     roci_plot <- roci_plot +
       ggplot2::geom_point(
