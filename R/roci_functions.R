@@ -17,7 +17,7 @@
 #' set.seed(123)
 #' ph_values <- rnorm(20, 7, 2)
 #' med_class <- ifelse(ph_values >= quantile(ph_values, 0.25) &
-#'   ph_values >= quantile(ph_values, 0.75),
+#'   ph_values <= quantile(ph_values, 0.75),
 #' sample(c(0, 1), prob = c(0.3, 0.7)),
 #' sample(c(0, 1), prob = c(0.8, 0.2))
 #' )
@@ -91,6 +91,75 @@ roci <- function(data, classes) {
   return(results)
 }
 
+#' Compute area under the curve (AUC) for curve provided by ROCI algorithm.
+#'
+#' Compute area under the curve (AUC) for curve computed via `roci()` function using the maximal sensitivity corresponding to each specificity.
+#'
+#' @return A numeric giving the AUC value.
+#' @export
+#'
+#' @examples
+#' set.seed(123)
+#' ph_values <- rnorm(20, 7, 2)
+#' med_class <- ifelse(ph_values >= quantile(ph_values, 0.25) &
+#'   ph_values <= quantile(ph_values, 0.75),
+#' sample(c(0, 1), prob = c(0.3, 0.7)),
+#' sample(c(0, 1), prob = c(0.8, 0.2))
+#' )
+#' roci_results <- roci(ph_values, med_class)
+#' auc_roci(roci_results)
+
+auc_roci <- function(roci_results) {
+  if (!requireNamespace("dplyr", quietly = TRUE)) {
+    stop(
+      "Package \"dplyr\" must be installed to use this function.",
+      call. = FALSE
+    )
+  }
+  if (!requireNamespace("magrittr", quietly = TRUE)) {
+    stop(
+      "Package \"magrittr\" must be installed to use this function.",
+      call. = FALSE
+    )
+  }
+
+  # Add bottom left value for roci curve
+  if (sum(roci_results$width == 0) == 0) {
+    roci_results <- roci_results %>%
+      dplyr::add_row(
+        width = 0,
+        sensitivity = 0,
+        specificity = 1,
+        J = 0
+      )
+  }
+
+  # Add top right value for roci curve
+  if (sum(roci_results$width == max(roci_results$width) + 1) == 0) {
+    roci_results <- roci_results %>%
+      dplyr::add_row(
+        width = max(roci_results$width) + 1,
+        sensitivity = 1,
+        specificity = 0,
+        J = 0
+      )
+  }
+
+  # Compute AUC via Riemann sum
+  roci_comp_auc <- roci_results %>%
+    dplyr::mutate(fpr = 1 - specificity) %>%
+    dplyr::select(fpr, sensitivity) %>%
+    dplyr::slice_max(sensitivity, by = fpr, with_ties = FALSE) %>%
+    dplyr::arrange(fpr) %>%
+    dplyr::mutate(fpr_next = lead(fpr),
+                  df = sensitivity * (fpr_next - fpr))
+
+  auc <- sum(roci_comp_auc$df, na.rm = TRUE)
+
+  return(auc)
+}
+
+
 
 
 #' Plot results of ROCI algorithm
@@ -112,7 +181,7 @@ roci <- function(data, classes) {
 #' set.seed(123)
 #' ph_values <- rnorm(20, 7, 2)
 #' med_class <- ifelse(ph_values >= quantile(ph_values, 0.25) &
-#'   ph_values >= quantile(ph_values, 0.75),
+#'   ph_values <= quantile(ph_values, 0.75),
 #' sample(c(0, 1), prob = c(0.3, 0.7)),
 #' sample(c(0, 1), prob = c(0.8, 0.2))
 #' )

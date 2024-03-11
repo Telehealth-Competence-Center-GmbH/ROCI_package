@@ -35,7 +35,7 @@ Plot a ROC curve for intervals as calculated by \code{roci()}.
 set.seed(123)
 ph_values <- rnorm(20, 7, 2)
 med_class <- ifelse(ph_values >= quantile(ph_values, 0.25) &
-  ph_values >= quantile(ph_values, 0.75),
+  ph_values <= quantile(ph_values, 0.75),
 sample(c(0, 1), prob = c(0.3, 0.7)),
 sample(c(0, 1), prob = c(0.8, 0.2))
 )
