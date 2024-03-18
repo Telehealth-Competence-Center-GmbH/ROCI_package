@@ -108,7 +108,7 @@ roci <- function(data, classes, event = "inside") {
   } else {
     # switch sensitivity and specificity etc.
     colnames(results) <- c("width", "rn", "rp", "fn", "fp", "specificity", "sensitivity", "J", "l_cutoff", "u_cutoff")
-    results <- results["width", "rp", "rn",  "fp", "fn", "sensitivity", "specificity", "J", "l_cutoff", "u_cutoff"]
+    results <- results[c("width", "rp", "rn",  "fp", "fn", "sensitivity", "specificity", "J", "l_cutoff", "u_cutoff")]
     return(results)
   }
 
