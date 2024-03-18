@@ -4,13 +4,16 @@
 \alias{roci}
 \title{Calculates the ROC for intervals}
 \usage{
-roci(data, classes)
+roci(data, classes, event = "inside")
 }
 \arguments{
 \item{data}{A numerical vector, which should be classified into a binary.
 outcome.}
 
 \item{classes}{A numerical binary vector with the knwon classes of the data.}
+
+\item{event}{One of "inside" or "outside" indicating whether class 1 should be
+predicted inside or outside of the interval.}
 }
 \value{
 A data.frame containing the cut-off values, sensitivity, specificity

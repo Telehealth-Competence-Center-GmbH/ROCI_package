@@ -8,6 +8,8 @@
 #' @param data A numerical vector, which should be classified into a binary.
 #' outcome.
 #' @param classes A numerical binary vector with the knwon classes of the data.
+#' @param event One of "inside" or "outside" indicating whether class 1 should be
+#' predicted inside or outside of the interval.
 #'
 #' @return A data.frame containing the cut-off values, sensitivity, specificity
 #' and the Youden-Index for all possible intervals.
@@ -22,12 +24,24 @@
 #' sample(c(0, 1), prob = c(0.8, 0.2))
 #' )
 #' roci(ph_values, med_class)
-roci <- function(data, classes) {
-  data_sorted <- data.frame(
-    data = data,
-    classes = classes
-  )
-  data_sorted <- data_sorted[order(data_sorted$data), ]
+roci <- function(data, classes, event = "inside") {
+
+  if (event == "inside") {
+    data_df <- data.frame(
+      data = data,
+      classes = classes
+    )
+  } else if (event == "outside") {
+    # switch classes 0 and 1 and correct at the end of the function
+    data_df <- data.frame(
+      data = data,
+      classes = 1 - classes
+    )
+  } else {
+    error("Only event = \"inside\" or event = \"outside\" allowed.")
+  }
+
+  data_sorted <- data_df[order(data_df$data), ]
   n <- nrow(data_sorted)
 
   # Initialize results
@@ -88,7 +102,16 @@ roci <- function(data, classes) {
       row_idx <- row_idx + 1
     }
   }
-  return(results)
+
+  if (event == "inside") {
+    return(results)
+  } else {
+    # switch sensitivity and specificity etc.
+    colnames(results) <- c("width", "rn", "rp", "fn", "fp", "specificity", "sensitivity", "J", "l_cutoff", "u_cutoff")
+    results <- results["width", "rp", "rn",  "fp", "fn", "sensitivity", "specificity", "J", "l_cutoff", "u_cutoff"]
+    return(results)
+  }
+
 }
 
 #' Compute area under the curve (AUC) for curve provided by ROCI algorithm.
@@ -151,7 +174,7 @@ auc_roci <- function(roci_results) {
     dplyr::select(fpr, sensitivity) %>%
     dplyr::slice_max(sensitivity, by = fpr, with_ties = FALSE) %>%
     dplyr::arrange(fpr) %>%
-    dplyr::mutate(fpr_next = lead(fpr),
+    dplyr::mutate(fpr_next = dplyr::lead(fpr),
                   df = sensitivity * (fpr_next - fpr))
 
   auc <- sum(roci_comp_auc$df, na.rm = TRUE)
