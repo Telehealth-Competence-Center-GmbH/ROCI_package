@@ -103,15 +103,13 @@ roci <- function(data, classes, event = "inside") {
     }
   }
 
-  if (event == "inside") {
-    return(results)
-  } else {
+  if (event == "outside") {
     # switch sensitivity and specificity etc.
-    colnames(results) <- c("width", "rn", "rp", "fn", "fp", "specificity", "sensitivity", "J", "l_cutoff", "u_cutoff")
-    results <- results[c("width", "rp", "rn",  "fp", "fn", "sensitivity", "specificity", "J", "l_cutoff", "u_cutoff")]
-    return(results)
+    colnames(results) <- c("width", "rn", "rp", "fn", "fp", "specificity", "sensitivity", "J", "l.cutoff", "u.cutoff")
+    results <- results[c("width", "rp", "rn",  "fp", "fn", "sensitivity", "specificity", "J", "l.cutoff", "u.cutoff")]
   }
-
+  attr(results, "event") <- event
+  return(results)
 }
 
 #' Compute area under the curve (AUC) for curve provided by ROCI algorithm.
@@ -146,24 +144,25 @@ auc_roci <- function(roci_results) {
     )
   }
 
-  # Add bottom left value for roci curve
+  # Add bottom left and top right value for roci curve
+  event <- attr(roci_results, "event")
+
   if (sum(roci_results$width == 0) == 0) {
     roci_results <- roci_results %>%
       dplyr::add_row(
         width = 0,
-        sensitivity = 0,
-        specificity = 1,
+        sensitivity = ifelse(event == "inside", 0, 1),
+        specificity = ifelse(event == "inside", 1, 0),
         J = 0
       )
   }
 
-  # Add top right value for roci curve
   if (sum(roci_results$width == max(roci_results$width) + 1) == 0) {
     roci_results <- roci_results %>%
       dplyr::add_row(
         width = max(roci_results$width) + 1,
-        sensitivity = 1,
-        specificity = 0,
+        sensitivity = ifelse(event == "inside", 1, 0),
+        specificity = ifelse(event == "inside", 0, 1),
         J = 0
       )
   }
@@ -234,12 +233,15 @@ plot_roci <- function(roci_results,
     auc <- auc_roci(roci_results)
   }
 
+  # Add bottom left and top right value for roci curve
+  event <- attr(roci_results, "event")
+
   if (sum(roci_results$width == 0) == 0) {
     roci_results <- roci_results %>%
       dplyr::add_row(
         width = 0,
-        sensitivity = 0,
-        specificity = 1,
+        sensitivity = ifelse(event == "inside", 0, 1),
+        specificity = ifelse(event == "inside", 1, 0),
         J = 0
       )
   }
@@ -248,17 +250,17 @@ plot_roci <- function(roci_results,
     roci_results <- roci_results %>%
       dplyr::add_row(
         width = max(roci_results$width) + 1,
-        sensitivity = 1,
-        specificity = 0,
+        sensitivity = ifelse(event == "inside", 1, 0),
+        specificity = ifelse(event == "inside", 0, 1),
         J = 0
       )
   }
 
   roci_results_gg <- roci_results %>%
-    dplyr::arrange(width) %>%
     dplyr::group_by(width) %>%
     dplyr::mutate(max_j = ifelse(J == max(J), 1, 0)) %>%
-    dplyr::ungroup()
+    dplyr::ungroup() %>%
+    dplyr::arrange(width)
 
   roci_plot <- ggplot2::ggplot(roci_results_gg) +
     ggplot2::geom_point(ggplot2::aes(x = 1 - specificity, y = sensitivity)) +
@@ -269,7 +271,7 @@ plot_roci <- function(roci_results,
     ggplot2::geom_line(
       ggplot2::aes(x = 1 - specificity, y = sensitivity, group = width)
     ) +
-    ggplot2::geom_line(
+    ggplot2::geom_path(
       data = subset(roci_results_gg, max_j == 1),
       ggplot2::aes(x = 1 - specificity, y = sensitivity)
     ) +
