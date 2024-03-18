@@ -38,7 +38,7 @@ roci <- function(data, classes, event = "inside") {
       classes = 1 - classes
     )
   } else {
-    error("Only event = \"inside\" or event = \"outside\" allowed.")
+    stop("Only event = \"inside\" or event = \"outside\" allowed.")
   }
 
   data_sorted <- data_df[order(data_df$data), ]
