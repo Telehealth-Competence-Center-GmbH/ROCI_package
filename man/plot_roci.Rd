@@ -6,6 +6,7 @@
 \usage{
 plot_roci(
   roci_results,
+  hide_whiskers = FALSE,
   add_width_plot = TRUE,
   add_yi_plot = TRUE,
   add_cutoff_plot = TRUE,
@@ -19,7 +20,7 @@ plot_roci(
 \item{add_width_plot}{Logical if width of intervals should be added to plot.}
 
 \item{add_yi_plot}{Logical if maximal Youden-Index should be written to plot
-and if the corresponding interval should be highlighted}
+and if the corresponding interval should be highlighted.}
 
 \item{add_cutoff_plot}{Logical if corresponding interval of maximal
 Youden-Index should be written to plot.}
@@ -27,6 +28,9 @@ Youden-Index should be written to plot.}
 \item{add_auc_plot}{Logical if corresponding AUC should be written to plot.}
 
 \item{...}{Additional arguments passed to ggplot.}
+
+\item{hide_whisker}{Logical if suboptimal sensitivity-specificity pairs for
+fixed interval lengths should be hidden in the plot.}
 }
 \value{
 A ggplot.

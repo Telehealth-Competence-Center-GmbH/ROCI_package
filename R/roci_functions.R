@@ -26,82 +26,81 @@
 #' roci(ph_values, med_class)
 roci <- function(data, classes, event = "inside") {
 
-  if (event == "inside") {
-    data_df <- data.frame(
-      data = data,
-      classes = classes
-    )
-  } else if (event == "outside") {
+  if(any(duplicated(data))){
+    warning("Data contains ties. ROCI curves may not be an appropriate tool. Consider making values unique by adding some minimal noise.")
+  }
+
+  if (event == "outside") {
     # switch classes 0 and 1 and correct at the end of the function
-    data_df <- data.frame(
-      data = data,
-      classes = 1 - classes
-    )
-  } else {
+    classes = 1 - classes
+  } else if (event != "inside") {
     stop("Only event = \"inside\" or event = \"outside\" allowed.")
   }
 
-  data_sorted <- data_df[order(data_df$data), ]
-  n <- nrow(data_sorted)
+  data_df <- data.frame(data = data, classes = classes) %>%
+    summarize(events = sum(classes),
+              non_events = sum(1 - classes),
+              .by = data) %>%
+    arrange(data)
+
+  ord <- order(data)
+  data_sorted <- data_df$data
+  events_cumsum <- cumsum(data_df$events)
+  non_events_cumsum <- cumsum(data_df$non_events)
+  n <- length(data_sorted)
 
   # Initialize results
-  # Number of rows sum_{i=1}^n (i)
   n_rows <- sum(seq(1, n-1))
-  results <- data.frame(
-    "width" = numeric(n_rows),
-    "rp" = numeric(n_rows),
-    "rn" = numeric(n_rows),
-    "fp" = numeric(n_rows),
-    "fn" = numeric(n_rows),
-    "sensitivity" = numeric(n_rows),
-    "specificity" = numeric(n_rows),
-    "J" = numeric(n_rows),
-    "l.cutoff" = numeric(n_rows),
-    "u.cutoff" = numeric(n_rows)
-  )
+  width_ <- numeric(n_rows)
+  rp_ <- numeric(n_rows)
+  rn_ <- numeric(n_rows)
+  fp_ <- numeric(n_rows)
+  fn_ <- numeric(n_rows)
+  l_cut_ <- numeric(n_rows)
+  u_cut_ <- numeric(n_rows)
   row_idx <- 1
   # Laufe über Breite des Intervalls
   for (int_width in 1:(n - 1)) {
+    if (int_width %% 100 == 0) print(int_width)
     s <- n - int_width
     for (int_pos in 0:s) {
-      # Erstelle Vektor mit "vorhergesagten" Klassen
-      pred_classes_tmp <- c(
-        rep(0, int_pos),
-        rep(1, int_width),
-        rep(0, (n - int_pos - int_width))
-      )
+      l_cut_[row_idx] <- data_sorted[int_pos + 1]
+      u_cut_[row_idx] <- data_sorted[int_pos + int_width]
       # Anzahl richtig positiver/negativer und falsch positiver/negativer
-      rp <- sum(ifelse(data_sorted$classes == 1 & pred_classes_tmp == 1, 1, 0))
-      rn <- sum(ifelse(data_sorted$classes == 0 & pred_classes_tmp == 0, 1, 0))
-      fp <- sum(ifelse(data_sorted$classes == 0 & pred_classes_tmp == 1, 1, 0))
-      fn <- sum(ifelse(data_sorted$classes == 1 & pred_classes_tmp == 0, 1, 0))
-      l_cut <- ifelse(
-        int_width != 0,
-        min(subset(data_sorted$data, pred_classes_tmp == 1)), 0
-      )
-      u_cut <- ifelse(
-        int_width != 0,
-        max(subset(data_sorted$data, pred_classes_tmp == 1)), 1
-      )
-      sens <- rp / (rp + fn)
-      spec <- rn / (rn + fp)
-      you_idx <- sens + spec - 1
-      results_tmp <- data.frame(
-        "width" = int_width,
-        "rp" = rp,
-        "rn" = rn,
-        "fp" = fp,
-        "fn" = fn,
-        "sensitivity" = sens,
-        "specificity" = spec,
-        "J" = you_idx,
-        "l_cutoff" = l_cut,
-        "u_cutoff" = u_cut
-      )
-      results[row_idx, ] <- results_tmp
+      if (int_pos > 0) {
+        rp_[row_idx] <- events_cumsum[int_pos + int_width] - events_cumsum[int_pos]
+        fp_[row_idx] <- non_events_cumsum[int_pos + int_width] - non_events_cumsum[int_pos]
+        fn_[row_idx] <- events_cumsum[int_pos] + events_cumsum[n] - events_cumsum[int_pos + int_width]
+        rn_[row_idx] <- non_events_cumsum[int_pos] + non_events_cumsum[n] - non_events_cumsum[int_pos + int_width]
+      } else {
+        rp_[row_idx] <- events_cumsum[int_pos + int_width]
+        fp_[row_idx] <- non_events_cumsum[int_pos + int_width]
+        fn_[row_idx] <- events_cumsum[n] - events_cumsum[int_pos + int_width]
+        rn_[row_idx] <- non_events_cumsum[n] - non_events_cumsum[int_pos + int_width]
+      }
+      width_[row_idx] = rp_[row_idx] + fp_[row_idx]
       row_idx <- row_idx + 1
     }
   }
+
+  sensitivity_ <- rp_ / (rp_ + fn_)
+  specificity_ <- rn_ / (rn_ + fp_)
+  J_ <- sensitivity_ + specificity_ - 1
+
+  results <- data.frame(
+    width = width_,
+    rp = rp_,
+    rn = rn_,
+    fp = fp_,
+    fn = fn_,
+    sensitivity = sensitivity_,
+    specificity = specificity_,
+    J = J_,
+    l.cutoff = l_cut_,
+    u.cutoff = u_cut_
+  )
+
+  results <- results[order(results$width, results$J),]
 
   if (event == "outside") {
     # switch sensitivity and specificity etc.
@@ -174,7 +173,8 @@ auc_roci <- function(roci_results) {
     dplyr::slice_max(sensitivity, by = fpr, with_ties = FALSE) %>%
     dplyr::arrange(fpr) %>%
     dplyr::mutate(fpr_next = dplyr::lead(fpr),
-                  df = sensitivity * (fpr_next - fpr))
+                  sensitivity_next = dplyr::lead(sensitivity),
+                  df = (sensitivity + sensitivity_next)/2 * (fpr_next - fpr))
 
   auc <- sum(roci_comp_auc$df, na.rm = TRUE)
 
@@ -189,9 +189,11 @@ auc_roci <- function(roci_results) {
 #' Plot a ROC curve for intervals as calculated by `roci()`.
 #'
 #' @param roci_results A data frame as returned by `roci()`.
+#' @param hide_whisker Logical if suboptimal sensitivity-specificity pairs for
+#' fixed interval lengths should be hidden in the plot.
 #' @param add_width_plot Logical if width of intervals should be added to plot.
 #' @param add_yi_plot Logical if maximal Youden-Index should be written to plot
-#' and if the corresponding interval should be highlighted
+#' and if the corresponding interval should be highlighted.
 #' @param add_cutoff_plot Logical if corresponding interval of maximal
 #' Youden-Index should be written to plot.
 #' @param add_auc_plot Logical if corresponding AUC should be written to plot.
@@ -211,6 +213,7 @@ auc_roci <- function(roci_results) {
 #' roci_results <- roci(ph_values, med_class)
 #' plot_roci(roci_results)
 plot_roci <- function(roci_results,
+                      hide_whiskers = FALSE,
                       add_width_plot = TRUE,
                       add_yi_plot = TRUE,
                       add_cutoff_plot = TRUE,
