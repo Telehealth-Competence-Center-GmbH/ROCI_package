@@ -61,7 +61,6 @@ roci <- function(data, classes, event = "inside") {
   row_idx <- 1
   # Laufe über Breite des Intervalls
   for (int_width in 1:(n - 1)) {
-    if (int_width %% 100 == 0) print(int_width)
     s <- n - int_width
     for (int_pos in 0:s) {
       l_cut_[row_idx] <- data_sorted[int_pos + 1]
