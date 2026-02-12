@@ -1,6 +1,6 @@
 # ROCI Package
 
-**Repository Type:** `roci_algo_pckg` (Algorithm Package)
+**Repository Type:** `roci` (R Package/Tool)
 
 ## Overview
 
